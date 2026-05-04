@@ -48,5 +48,3 @@ python app.py
 ## 🛡️ Güvenli Liste (Whitelist)
 Proje; Google, GitHub, Kaggle gibi popüler ve güvenilir siteleri analiz etmeden doğrudan "Güvenli" olarak işaretleyen bir whitelist mekanizmasına sahiptir.
 
----
-*Bu proje bir okul ödevi kapsamında geliştirilmiştir.*
