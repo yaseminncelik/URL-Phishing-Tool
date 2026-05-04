@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing URL Detector</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --danger: #d32f2f;
+            --warning: #f57f17;
+            --success: #388e3c;
+            --light: #f5f7fa;
+            --dark: #1a1a2e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 50px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .icon-header {
+            font-size: 48px;
+            margin-bottom: 15px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            color: var(--dark);
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        #urlInput {
+            flex: 1;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: var(--light);
+        }
+
+        #urlInput:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: #f0f0f0;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background: #e0e0e0;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #resultContainer {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 6px solid #ddd;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        #resultContainer.high-risk {
+            background: linear-gradient(135deg, rgba(211, 47, 47, 0.08) 0%, rgba(211, 47, 47, 0.02) 100%);
+            border-left-color: var(--danger);
+        }
+
+        #resultContainer.medium-risk {
+            background: linear-gradient(135deg, rgba(245, 127, 23, 0.08) 0%, rgba(245, 127, 23, 0.02) 100%);
+            border-left-color: var(--warning);
+        }
+
+        #resultContainer.low-risk {
+            background: linear-gradient(135deg, rgba(56, 142, 60, 0.08) 0%, rgba(56, 142, 60, 0.02) 100%);
+            border-left-color: var(--success);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .result-icon {
+            font-size: 32px;
+        }
+
+        .result-text {
+            flex: 1;
+        }
+
+        .result-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        #resultContainer.high-risk .result-label {
+            color: var(--danger);
+        }
+
+        #resultContainer.medium-risk .result-label {
+            color: var(--warning);
+        }
+
+        #resultContainer.low-risk .result-label {
+            color: var(--success);
+        }
+
+        .result-level {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        #resultContainer.high-risk .result-level {
+            color: var(--danger);
+        }
+
+        #resultContainer.medium-risk .result-level {
+            color: var(--warning);
+        }
+
+        #resultContainer.low-risk .result-level {
+            color: var(--success);
+        }
+
+        .result-score-bar {
+            margin: 15px 0;
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #resultContainer.high-risk .progress-bar {
+            background-color: rgba(211, 47, 47, 0.2);
+        }
+
+        #resultContainer.high-risk .progress-fill {
+            background: linear-gradient(90deg, var(--danger), #ff5252);
+        }
+
+        #resultContainer.medium-risk .progress-bar {
+            background-color: rgba(245, 127, 23, 0.2);
+        }
+
+        #resultContainer.medium-risk .progress-fill {
+            background: linear-gradient(90deg, var(--warning), #ffb74d);
+        }
+
+        #resultContainer.low-risk .progress-bar {
+            background-color: rgba(56, 142, 60, 0.2);
+        }
+
+        #resultContainer.low-risk .progress-fill {
+            background: linear-gradient(90deg, var(--success), #66bb6a);
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .result-url {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            word-break: break-all;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .url-text {
+            flex: 1;
+        }
+
+        .features-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .features-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .feature-item {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .feature-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error {
+            background: linear-gradient(135deg, rgba(211, 47, 47, 0.1) 0%, rgba(211, 47, 47, 0.05) 100%);
+            color: var(--danger);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+            border-left: 4px solid var(--danger);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .history-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .history-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid #ddd;
+        }
+
+        .history-item:hover {
+            background: #f0f0f0;
+        }
+
+        .history-item.high {
+            border-left-color: var(--danger);
+        }
+
+        .history-item.medium {
+            border-left-color: var(--warning);
+        }
+
+        .history-item.low {
+            border-left-color: var(--success);
+        }
+
+        .history-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-url {
+            color: #666;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-risk {
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon-header">🔒</div>
+            <h1>Phishing URL Detector</h1>
+            <p class="subtitle">
+                <i class="fas fa-shield-alt"></i>
+                URLs'yi güvenlik açısından analiz et
+            </p>
+        </div>
+
+        <div class="input-group">
+            <input 
+                type="text" 
+                id="urlInput" 
+                placeholder="https://example.com/login"
+                autocomplete="off"
+            >
+            <div class="button-group">
+                <button onclick="scanURL()">
+                    <i class="fas fa-search"></i> Scan
+                </button>
+            </div>
+        </div>
+
+        <div id="loading">
+            <div class="spinner"></div>
+            <p style="color: #666; font-size: 14px;">
+                <i class="fas fa-spin fa-spinner"></i> Analiz yapılıyor...
+            </p>
+        </div>
+
+        <div id="resultContainer">
+            <div class="result-header">
+                <div class="result-icon" id="resultIcon"></div>
+                <div class="result-text">
+                    <div class="result-label">Analiz Sonucu</div>
+                    <div class="result-level" id="resultLevel"></div>
+                </div>
+            </div>
+
+            <div class="result-score-bar">
+                <div class="score-label">
+                    <span>Risk Skoru</span>
+                    <strong id="riskScore"></strong>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="result-url">
+                <div class="url-text" id="resultURL"></div>
+                <button class="btn-small" onclick="copyToClipboard()" title="URL'yi kopyala">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+
+            <div class="features-section">
+                <div class="features-title">
+                    <i class="fas fa-sliders-h"></i> URL Özellikleri
+                </div>
+                <div class="features-grid" id="featuresGrid"></div>
+            </div>
+        </div>
+
+        <div class="error" id="errorContainer"></div>
+
+        <div class="history-section" id="historySection" style="display: none;">
+            <div class="history-title">
+                <i class="fas fa-history"></i> Tarama Geçmişi
+            </div>
+            <div class="history-list" id="historyList"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const loadingElement = document.getElementById('loading');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorContainer = document.getElementById('errorContainer');
+        const historySection = document.getElementById('historySection');
+        const historyList = document.getElementById('historyList');
+
+        let scanHistory = [];
+        let lastFeatures = {};
+
+        // Enter tuşu ile tarama
+        urlInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                scanURL();
+            }
+        });
+
+        async function scanURL() {
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showError('Lütfen bir URL girin');
+                return;
+            }
+
+            if (!isValidURL(url)) {
+                showError('Lütfen geçerli bir URL girin');
+                return;
+            }
+
+            loadingElement.style.display = 'block';
+            resultContainer.style.display = 'none';
+            errorContainer.style.display = 'none';
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Bir hata oluştu');
+                    return;
+                }
+
+                displayResult(data);
+                addToHistory(data);
+            } catch (error) {
+                showError('Bağlantı hatası: ' + error.message);
+            } finally {
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        function displayResult(data) {
+            const riskScore = Math.round(data.risk_score * 100);
+            const riskLevel = data.risk_level;
+
+            let riskClass = 'low-risk';
+            let icon = '✓';
+            if (riskLevel.includes('HIGH')) {
+                riskClass = 'high-risk';
+                icon = '⚠️';
+            } else if (riskLevel.includes('MEDIUM')) {
+                riskClass = 'medium-risk';
+                icon = '⚡';
+            }
+
+            document.getElementById('resultIcon').textContent = icon;
+            document.getElementById('resultLevel').textContent = riskLevel;
+            document.getElementById('riskScore').textContent = riskScore + '%';
+            document.getElementById('resultURL').textContent = data.url;
+            document.getElementById('progressFill').style.width = riskScore + '%';
+
+            // Features göster
+            displayFeatures(data);
+
+            resultContainer.className = riskClass;
+            resultContainer.style.display = 'block';
+        }
+
+        function displayFeatures(data) {
+            const featuresGrid = document.getElementById('featuresGrid');
+            featuresGrid.innerHTML = '';
+
+            // Features verilerini sakla
+            lastFeatures = {
+                length: data.length || 0,
+                dots: data.dots || 0,
+                slashes: data.slashes || 0,
+                https: data.https || 0,
+                digits: data.digits || 0,
+                has_login: data.has_login || 0,
+                has_free: data.has_free || 0,
+                has_verify: data.has_verify || 0
+            };
+
+            const features = [
+                { label: 'URL Uzunluğu', value: data.url ? data.url.length : 0 },
+                { label: 'Nokta (.) Sayısı', value: (data.url || '').split('.').length - 1 },
+                { label: 'Eğik Çizgi (/) Sayısı', value: (data.url || '').split('/').length - 1 },
+                { label: 'HTTPS Kullanımı', value: (data.url || '').includes('https') ? '✓ Var' : '✗ Yok' },
+                { label: 'Rakam Sayısı', value: (data.url || '').split('').filter(c => /\d/.test(c)).length },
+                { label: 'Login Kelimesi', value: (data.url || '').includes('login') ? '✓ Var' : '✗ Yok' },
+                { label: 'Free Kelimesi', value: (data.url || '').includes('free') ? '✓ Var' : '✗ Yok' },
+                { label: 'Verify Kelimesi', value: (data.url || '').includes('verify') ? '✓ Var' : '✗ Yok' }
+            ];
+
+            features.forEach(feature => {
+                const item = document.createElement('div');
+                item.className = 'feature-item';
+                item.innerHTML = `<span class="feature-label">${feature.label}:</span> ${feature.value}`;
+                featuresGrid.appendChild(item);
+            });
+        }
+
+        function addToHistory(data) {
+            const riskScore = Math.round(data.risk_score * 100);
+            const riskLevel = data.risk_level;
+            let riskClass = 'low';
+            if (riskLevel.includes('HIGH')) {
+                riskClass = 'high';
+            } else if (riskLevel.includes('MEDIUM')) {
+                riskClass = 'medium';
+            }
+
+            const historyItem = {
+                url: data.url,
+                riskScore: riskScore,
+                riskLevel: riskLevel,
+                riskClass: riskClass,
+                timestamp: new Date().toLocaleTimeString('tr-TR')
+            };
+
+            scanHistory.unshift(historyItem);
+            if (scanHistory.length > 10) {
+                scanHistory.pop();
+            }
+
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            if (scanHistory.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+
+            historySection.style.display = 'block';
+            historyList.innerHTML = '';
+
+            scanHistory.forEach((item, index) => {
+                const historyItemDiv = document.createElement('div');
+                historyItemDiv.className = `history-item ${item.riskClass}`;
+                historyItemDiv.innerHTML = `
+                    <div class="history-text">
+                        <span class="history-url" title="${item.url}">${item.url}</span>
+                        <span class="history-risk" style="color: ${getRiskColor(item.riskClass)}">${item.riskScore}%</span>
+                    </div>
+                `;
+                historyItemDiv.style.cursor = 'pointer';
+                historyItemDiv.onclick = () => {
+                    urlInput.value = item.url;
+                    scanURL();
+                };
+                historyList.appendChild(historyItemDiv);
+            });
+        }
+
+        function getRiskColor(riskClass) {
+            switch(riskClass) {
+                case 'high': return '#d32f2f';
+                case 'medium': return '#f57f17';
+                case 'low': return '#388e3c';
+                default: return '#666';
+            }
+        }
+
+        function showError(message) {
+            errorContainer.textContent = '❌ ' + message;
+            errorContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+        }
+
+        function isValidURL(string) {
+            try {
+                let urlString = string;
+                if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+                    urlString = 'https://' + urlString;
+                }
+                new URL(urlString);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function copyToClipboard() {
+            const url = document.getElementById('resultURL').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL kopyalandı! 📋');
+            });
+        }
+    </script>
+</body>
+</html>
